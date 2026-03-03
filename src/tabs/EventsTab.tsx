@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { ethers } from 'ethers';
-import { ALCHEMY_RPC_URL, formatDate, getReadContract, toReadableError } from '../eth';
+import { formatDate, getReadContract, getReadProvider, toReadableError } from '../eth';
 
 type FileRegisteredEvent = {
   fileHash: string;
@@ -26,7 +26,6 @@ type ConsentChangedEvent = {
 
 export default function EventsTab() {
   const [inputValue, setInputValue] = useState('');
-  const [fromBlock, setFromBlock] = useState<number>(10288806);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
@@ -34,7 +33,8 @@ export default function EventsTab() {
   const [consentChanges, setConsentChanges] = useState<ConsentChangedEvent[]>([]);
   const [searched, setSearched] = useState(false);
 
-  const CHUNK_SIZE = 10;
+  const FROM_BLOCK = 10288806;
+  const CHUNK_SIZE = 50000;
 
   const queryFilterChunked = async (
     contract: ethers.Contract,
@@ -75,7 +75,8 @@ export default function EventsTab() {
     setStatus('Connecting to node...');
 
     try {
-      const contract = getReadContract();
+      const provider = getReadProvider();
+      const contract = getReadContract(provider);
       const raw = inputValue.trim();
 
       if (!raw.startsWith('0x') || raw.length !== 66) {
@@ -85,15 +86,14 @@ export default function EventsTab() {
       const registeredFilter = contract.filters.FileRegistered(raw, null);
       const consentFilter = contract.filters.ConsentChanged(raw, null);
 
-      const provider = new ethers.JsonRpcProvider(ALCHEMY_RPC_URL);
       const latestBlock = await provider.getBlockNumber();
-      setStatus(`Current block: ${latestBlock}. Scanning from block ${fromBlock}...`);
+      setStatus(`Current block: ${latestBlock}. Scanning from block ${FROM_BLOCK}...`);
 
-      const rawRegistered = await queryFilterChunked(contract, registeredFilter, fromBlock, latestBlock, (msg) =>
+      const rawRegistered = await queryFilterChunked(contract, registeredFilter, FROM_BLOCK, latestBlock, (msg) =>
         setStatus(`[FileRegistered] ${msg}`)
       );
 
-      const rawConsent = await queryFilterChunked(contract, consentFilter, fromBlock, latestBlock, (msg) =>
+      const rawConsent = await queryFilterChunked(contract, consentFilter, FROM_BLOCK, latestBlock, (msg) =>
         setStatus(`[ConsentChanged] ${msg}`)
       );
 
@@ -167,13 +167,6 @@ export default function EventsTab() {
             placeholder="0xabc123..."
             className="events-input-mono"
           />
-        </div>
-
-        <div className="form-group">
-          <label>
-            From block # <span className="events-label-note"></span>
-          </label>
-          <input type="number" value={fromBlock} min={0} onChange={(e) => setFromBlock(Number(e.target.value))} placeholder="0" />
         </div>
 
         <div className="action-row">

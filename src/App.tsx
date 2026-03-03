@@ -4,7 +4,7 @@ import RegistryTab from './tabs/RegistryTab';
 import VerifyTab from './tabs/VerifyTab';
 import AiConsentTab from './tabs/AiConsentTab';
 import EventsTab from './tabs/EventsTab';
-import { ALCHEMY_RPC_URL, CONTRACT_ADDRESS, connectWallet } from './eth';
+import { ALCHEMY_RPC_URL, CONTRACT_ADDRESS, connectWallet, disconnectWallet } from './eth';
 import type { WalletInfo } from './eth';
 
 const shortAddr = (addr: string): string =>
@@ -37,6 +37,13 @@ function App() {
     }
   };
 
+  const onDisconnectWallet = async () => {
+    await disconnectWallet();
+    setWalletAddress('');
+    setNetworkName('not connected');
+    setWalletError('');
+  };
+
   return (
     <main className="app-shell">
       <header className="header">
@@ -65,7 +72,11 @@ function App() {
             <span>{networkName}</span>
           </div>
           <div className="wallet-pill">{shortAddr(walletAddress)}</div>
-          <button className="btn ghost" onClick={onConnectWallet}>Connect Wallet</button>
+          {walletAddress ? (
+            <button className="btn ghost" onClick={onDisconnectWallet}>Disconnect</button>
+          ) : (
+            <button className="btn ghost" onClick={onConnectWallet}>Connect Wallet</button>
+          )}
         </div>
       </header>
 
